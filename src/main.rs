@@ -105,12 +105,6 @@ fn commit(x: Vec<u128>) -> (Vec<u128>, Vec<Vec<u128>>, Vec<u128>) {
         .collect::<Vec<u128>>();
 
     let inter1 = vec_matrix_mul(r.clone(), alpha.clone());
-
-    // here we're using a zero vector of length k-l
-    // this is different than what the paper specifies
-    // the paper specifies addition between a matrix and vector
-    // of mismatched sizes
-    // awaiting response from authors
     let inter2 = vec![vec![0; n], x].concat();
     let commitment = vec_add(&inter2, &inter1);
 
