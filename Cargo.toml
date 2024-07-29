@@ -4,5 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+ark-ff = { version = "0.4.2", default-features = false }
 modinverse = "0.1.1"
 rand = "0.8.5"
