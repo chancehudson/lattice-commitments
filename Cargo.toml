@@ -1,0 +1,8 @@
+[package]
+name = "lattice-commitments"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+modinverse = "0.1.1"
+rand = "0.8.5"
