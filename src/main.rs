@@ -200,7 +200,7 @@ fn commit(x: Vec<u128>) -> Vec<Vec<u128>> {
 
     let inter1 = vec_matrix_mul(r, compose_vertical(alpha_1, alpha_2));
 
-    // here we're using a zero vector of length n-l
+    // here we're using a zero vector of length k-l
     // this is different than what the paper specifies
     // the paper specifies addition between a matrix and vector
     // of mismatched sizes
