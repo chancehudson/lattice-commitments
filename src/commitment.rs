@@ -28,21 +28,19 @@ impl<T: FieldElement + Norm> Vcs<T> {
         }
     }
 
-    // returns r, alpha, and commitment vector
-    pub fn commit(&self, x: Vec<T>, r: Vec<T>) -> (Vec<T>, Matrix2D<T>, Vec<T>) {
+    /// Commit to a value `x` with secret `r`
+    ///
+    /// Returns the public parameters alpha and the commitment vector
+    pub fn commit(&self, x: &Vec<T>, r: &Vec<T>) -> (Matrix2D<T>, Vec<T>) {
         assert_eq!(self.l, x.len(), "invalid message length");
         let (alpha_1, alpha_2) = self.public_params();
         let alpha = alpha_1.compose_vertical(alpha_2.clone());
 
         let inter1 = Self::vec_matrix_mul(r.clone(), alpha.clone());
-        let inter2 = vec![vec![T::zero(); self.n], x].concat();
+        let inter2 = vec![vec![T::zero(); self.n], x.clone()].concat();
         let commitment = Self::vec_add(&inter2, &inter1);
 
-        let (a1, a2) = alpha.clone().split_vertical(self.n, self.l);
-        assert!(a1 == alpha_1);
-        assert!(a2 == alpha_2);
-
-        (r, alpha, commitment)
+        (alpha, commitment)
     }
 
     /// Open a previously created commitment
@@ -53,16 +51,16 @@ impl<T: FieldElement + Norm> Vcs<T> {
     ///
     /// Solving for r without previous knowledge should involve solving
     /// the modular SIS problem (hard).
-    pub fn open(&self, commitment: Vec<T>, alpha: Matrix2D<T>, x: Vec<T>, r: Vec<T>) -> bool {
-        for v in &r {
+    pub fn open(&self, commitment: &Vec<T>, alpha: &Matrix2D<T>, x: &Vec<T>, r: &Vec<T>) -> bool {
+        for v in r {
             if v.norm_l2() > u64::try_from(4 * self.theta * 8).unwrap() {
                 return false;
             }
         }
         let mut padded_x = vec![T::zero(); self.n];
         padded_x.append(&mut x.clone());
-        let c = Self::vec_add(&Self::vec_matrix_mul(r, alpha), &padded_x);
-        c == commitment
+        let c = Self::vec_add(&Self::vec_matrix_mul(r.clone(), alpha.clone()), &padded_x);
+        c == *commitment
     }
 
     pub fn prove(&self, r: Vec<T>, alpha: Matrix2D<T>) -> (Vec<T>, Vec<T>, T) {

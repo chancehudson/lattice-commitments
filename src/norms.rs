@@ -1,4 +1,6 @@
 pub trait Norm {
+    /// Calculate the l1 norm for this polynomial. That is
+    /// the sum of all coefficients
     fn norm_l1(&self) -> u64;
 
     /// Calculate the l2 norm for this polynomial. That is

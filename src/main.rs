@@ -33,7 +33,6 @@ fn main() {
         "Polynomial ring: ℤ[X]/<X^{} + 1>\n",
         RingPolynomial::<ActiveField>::degree()
     );
-    println!();
     let vcs = Vcs::new();
     // the value being committed to
     let x: Vec<FieldPolynomial> = vec![FieldPolynomial::zero(); vcs.l]
@@ -52,7 +51,7 @@ fn main() {
     // r and x are secret until opening
     // alpha is a public parameter
     println!(
-        "Committing to {} polynomials, each containing {} coefficients:\n{}",
+        "Committing to {} polynomials, each containing {} coefficients:\n{}\n",
         vcs.l,
         RingPolynomial::<ActiveField>::degree(),
         x.iter()
@@ -60,21 +59,18 @@ fn main() {
             .collect::<Vec<_>>()
             .join(",\n")
     );
-    println!();
-    let (r, alpha, commitment) = vcs.commit(x.clone(), r);
+    let (alpha, commitment) = vcs.commit(&x, &r);
     println!(
-        "Opening commitment with secret vector ({} polynomials):\n{}",
+        "Opening commitment with secret vector ({} polynomials):\n{}\n",
         vcs.k,
         r.iter()
             .map(|v| v.serialize())
             .collect::<Vec<_>>()
             .join(",\n")
     );
-    println!();
-    let valid = vcs.open(commitment.clone(), alpha.clone(), x, r.clone());
+    let valid = vcs.open(&commitment, &alpha, &x, &r);
     if valid {
-        println!("Commitment opening is valid!");
-        println!();
+        println!("Commitment opening is valid!\n");
         let alpha_len = alpha.dimensions.0 * alpha.dimensions.1;
         println!(
             "Commitment size: {} bytes",

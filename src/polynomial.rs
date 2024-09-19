@@ -26,13 +26,7 @@ impl<T: FieldElement> Polynomial<T> {
         }
     }
 
-    // NOTE: technically the below norms are defined over the integers
-    // and not the field T. We should probably be returning BigUint
-    // values instead of T values for these norms.
-    //
-    // In the norm_max function we even convert to BigUint to do ordered
-    // comparisons because a field does not have ordering between elements.
-
+    /// Returns true if `self` is the zero polynomial
     pub fn is_zero(&self) -> bool {
         if self.coefficients.len() == 0 {
             return true;
@@ -45,6 +39,7 @@ impl<T: FieldElement> Polynomial<T> {
         return true;
     }
 
+    /// Do a scalar multiplication in place
     pub fn mul_scalar(&mut self, v: &T) {
         for i in 0..self.coefficients.len() {
             self.coefficients[i] *= v.clone();
