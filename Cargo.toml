@@ -5,4 +5,4 @@ edition = "2021"
 
 [dependencies]
 rand = "0.8.5"
-scalarff = { version = "0.4.1", features = ["oxfoi"] }
+scalarff = { version = "0.4.2", features = ["oxfoi", "random"] }

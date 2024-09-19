@@ -574,13 +574,14 @@ checksum = "f3cb5ba0dc43242ce17de99c180e96db90b235b8a9fdc9543c96d2209116bd9f"
 
 [[package]]
 name = "scalarff"
-version = "0.4.1"
+version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e2f7975938a60b50a3fac30e190de343948f4bcb9519745719c052e27ce1d301"
+checksum = "dfef4665624906679b3a8791efb36e3c956050297b7996762b53cf0faf1f5acc"
 dependencies = [
  "colored",
  "num-bigint",
  "num-integer",
+ "rand",
  "twenty-first",
 ]
 
