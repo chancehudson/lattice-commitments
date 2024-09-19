@@ -12,7 +12,7 @@ use super::RING_DEGREE;
 /// This polynomial ring can be considered a field as long as it's
 /// irreducible over the chosen base field T
 #[derive(Clone, Debug, PartialEq, Eq, std::hash::Hash)]
-pub struct RingPolynomial<T: FieldElement>(Polynomial<T>);
+pub struct RingPolynomial<T: FieldElement>(pub Polynomial<T>);
 
 impl<T: FieldElement> RingPolynomial<T> {
     pub fn modulus() -> Self {

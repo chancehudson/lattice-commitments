@@ -74,13 +74,16 @@ fn main() {
         let alpha_len = alpha.dimensions.0 * alpha.dimensions.1;
         println!(
             "Commitment size: {} bytes",
-            commitment.len() * FieldPolynomial::byte_len()
+            commitment.len() * RING_DEGREE * FieldPolynomial::byte_len()
         );
         println!(
             "Public parameters size: {} bytes",
-            alpha_len * ActiveField::byte_len()
+            alpha_len * RING_DEGREE * ActiveField::byte_len()
         );
-        println!("Secret size: {} bytes", r.len() * ActiveField::byte_len());
+        println!(
+            "Secret size: {} bytes",
+            r.len() * RING_DEGREE * ActiveField::byte_len()
+        );
     } else {
         println!("Commitment opening is NOT valid!")
     }
