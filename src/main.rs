@@ -1,17 +1,18 @@
-use ark_ff::PrimeField;
 use rand::prelude::*;
+use scalarff::matrix::Matrix;
+use scalarff::FieldElement;
+use scalarff::FoiFieldElement;
 
-use ark_ff::fields::{Fp64, MontBackend, MontConfig};
-use ark_ff::Field;
+mod matrix;
+mod polynomial;
+mod ring64;
 
-#[derive(MontConfig)]
-#[modulus = "18446744069414584321"]
-#[generator = "3"]
-pub struct FrConfig;
-pub type Fr = Fp64<MontBackend<FrConfig, 1>>;
+use ring64::RingPolynomial64;
+
+type FieldPolynomial = RingPolynomial64<FoiFieldElement>;
 
 fn main() {
-    let mut x: Vec<u128> = Vec::new();
+    let mut x: Vec<FieldPolynomial> = Vec::new();
     for _ in 0..16 {
         x.push(rand_field());
     }
@@ -25,11 +26,11 @@ fn main() {
 }
 
 fn verify(
-    t: Vec<u128>,
-    z: Vec<u128>,
-    d: u128,
-    commitment: Vec<u128>,
-    alpha: Vec<Vec<u128>>,
+    t: Vec<FieldPolynomial>,
+    z: Vec<FieldPolynomial>,
+    d: FieldPolynomial,
+    commitment: Vec<FieldPolynomial>,
+    alpha: Matrix<FieldPolynomial>,
 ) -> bool {
     // requirements
     // n < k
@@ -56,7 +57,10 @@ fn verify(
     true
 }
 
-fn prove(r: Vec<u128>, alpha: Vec<Vec<u128>>) -> (Vec<u128>, Vec<u128>, u128) {
+fn prove(
+    r: Vec<FieldPolynomial>,
+    alpha: Matrix<FieldPolynomial>,
+) -> (Vec<FieldPolynomial>, Vec<FieldPolynomial>, FieldPolynomial) {
     // requirements
     // n < k
     // k > n + l
@@ -69,23 +73,31 @@ fn prove(r: Vec<u128>, alpha: Vec<Vec<u128>>) -> (Vec<u128>, Vec<u128>, u128) {
     // TODO: determine a d value based on t
     let d = rand_field();
     // TODO: abort if necessary
-    let z = vec_add(&y, &r.iter().map(|v| (v * d) % F).collect());
+    let z = vec_add(&y, &r.iter().map(|v| v * d).collect());
     (t, z, d)
 }
 
 // returns r vector and commitment matrix
-fn commit(x: Vec<u128>) -> (Vec<u128>, Vec<Vec<u128>>, Vec<u128>) {
+fn commit(
+    x: Vec<FieldPolynomial>,
+) -> (
+    Vec<FieldPolynomial>,
+    Matrix<FieldPolynomial>,
+    Vec<FieldPolynomial>,
+) {
     // requirements
     // n < k
     // k > n + l
     let n = 16;
     let k = 64;
-    let l = 16;
+    let l = 16; // message length
     assert_eq!(l, x.len(), "invalid message length");
 
     // let lambda = 256;
     // let kappa = 60;
 
+    // alpha1 and 2 are public parameters in the system
+    // described at the top of page 11
     let alpha_1_prime = rand_matrix(n, k - n);
     let alpha_2_prime = rand_matrix(n, k - n - l);
 
@@ -95,249 +107,210 @@ fn commit(x: Vec<u128>) -> (Vec<u128>, Vec<Vec<u128>>, Vec<u128>) {
         alpha_2_prime,
     );
     let alpha = compose_vertical(alpha_1.clone(), alpha_2.clone());
+
     // modinv of 64 in F = 2^64 - 2^58
     // beta must be less than modinv(64)
 
-    let beta = 100_u128;
+    let beta = 100_u64;
     let r = vec![0; k]
         .into_iter()
         .map(|_| rand_field() % beta)
-        .collect::<Vec<u128>>();
+        .map(|v| FieldPolynomial::from(v))
+        .collect::<Vec<FieldPolynomial>>();
 
     let inter1 = vec_matrix_mul(r.clone(), alpha.clone());
-    let inter2 = vec![vec![0; n], x].concat();
+    let inter2 = vec![vec![FieldPolynomial::zero(); n], x].concat();
     let commitment = vec_add(&inter2, &inter1);
 
     // print_matrix(&commitment);
     let (a1, a2) = matrix_split_vertical(alpha.clone(), n, l);
-    assert!(matrix_equal(&a1, &alpha_1));
-    assert!(matrix_equal(&a2, &alpha_2));
+    assert!(a1 == alpha_1);
+    assert!(a2 == alpha_2);
 
     (r, alpha, commitment)
 }
 
-static F: u128 = 18446744069414584321;
-
-fn rand_field() -> u128 {
-    rand::random::<u128>() % F
+fn rand_field() -> FieldPolynomial {
+    FieldPolynomial::from(rand::random::<u64>())
 }
 
-fn rand_vec(n: usize) -> Vec<u128> {
+fn rand_vec(n: usize) -> Vec<FieldPolynomial> {
     vec![0; n].into_iter().map(|_| rand_field()).collect()
 }
 
-fn identity_matrix(n: usize) -> Vec<Vec<u128>> {
-    let mut out: Vec<Vec<u128>> = Vec::new();
+fn identity_matrix(n: usize) -> Matrix<FieldPolynomial> {
+    let mut values: Vec<FieldPolynomial> = Vec::new();
     for x in 0..n {
-        let mut row = vec![0_u128; n];
-        row[x] = 1_u128;
-        out.push(row)
+        let mut row = vec![FieldPolynomial::zero(); n];
+        row[x] = FieldPolynomial::one();
+        values.append(&mut row);
     }
-    out
-}
-
-fn zero_matrix(r: usize, c: usize) -> Vec<Vec<u128>> {
-    vec![vec![0_u128; c]; r]
-}
-
-fn rand_matrix(r: usize, c: usize) -> Vec<Vec<u128>> {
-    let mut out: Vec<Vec<u128>> = Vec::new();
-    for _ in 0..r {
-        out.push(rand_vec(c));
+    Matrix {
+        dimensions: vec![n, n],
+        values,
     }
-    out
 }
 
-fn matrix_equal(m1: &Vec<Vec<u128>>, m2: &Vec<Vec<u128>>) -> bool {
-    assert_eq!(m1.len(), m2.len(), "matrix equality row count mismatch");
-    for x in 0..m1.len() {
-        assert_eq!(
-            m1[x].len(),
-            m2[x].len(),
-            "matrix equality row length mismatch"
-        );
-        for y in 0..m1[x].len() {
-            if m1[x][y] != m2[x][y] {
-                return false;
-            }
-        }
+fn zero_matrix(r: usize, c: usize) -> Matrix<FieldPolynomial> {
+    Matrix {
+        dimensions: vec![r, c],
+        values: vec![FieldPolynomial::zero(); r * c],
     }
-    true
 }
 
+fn rand_matrix(r: usize, c: usize) -> Matrix<FieldPolynomial> {
+    Matrix {
+        dimensions: vec![r, c],
+        values: rand_vec(r * c),
+    }
+}
+
+/// Take an input matrix `m` and split it vertically into two
+/// matrices of heights `m1_height` and `m2_height`.
+/// The sum of `m1_height` and `m2_height` must be equal to the
+/// height of `m`
 fn matrix_split_vertical(
-    m: Vec<Vec<u128>>,
+    m: Matrix<FieldPolynomial>,
     m1_height: usize,
     m2_height: usize,
-) -> (Vec<Vec<u128>>, Vec<Vec<u128>>) {
+) -> (Matrix<FieldPolynomial>, Matrix<FieldPolynomial>) {
     assert_eq!(
         m.len(),
         m1_height + m2_height,
         "matrix vertical split height mismatch"
     );
-
-    let mut out0 = Vec::new();
-    let mut out1 = Vec::new();
-
-    for i in 0..m1_height {
-        out0.push(m[i].clone());
-    }
-    for i in m1_height..(m1_height + m2_height) {
-        out1.push(m[i].clone());
-    }
-    (out0, out1)
+    let cols = m.dimensions[1];
+    let mid_offset = m1_height * cols;
+    (
+        Matrix {
+            dimensions: vec![m1_height, cols],
+            values: m.values[..mid_offset].to_vec(),
+        },
+        Matrix {
+            dimensions: vec![m2_height, cols],
+            values: m.values[mid_offset..].to_vec(),
+        },
+    )
 }
 
-fn compose_horizontal(m1: Vec<Vec<u128>>, m2: Vec<Vec<u128>>) -> Vec<Vec<u128>> {
+/// Join two matrices horizontally
+fn compose_horizontal(
+    m1: Matrix<FieldPolynomial>,
+    m2: Matrix<FieldPolynomial>,
+) -> Matrix<FieldPolynomial> {
     assert_eq!(
-        m1.len(),
-        m2.len(),
+        m1.dimensions[0], m2.dimensions[0],
         "vertical size mismatch in horizontal composition"
     );
-    let mut out: Vec<Vec<u128>> = Vec::new();
-    for i in 0..m1.len() {
-        let row = vec![m1[i].clone(), m2[i].clone()]
-            .into_iter()
-            .flatten()
-            .collect::<Vec<u128>>();
-        out.push(row);
+    let mut values = vec![];
+    let m1_rows = m1.dimensions[0];
+    let m1_cols = m1.dimensions[1];
+    let m2_rows = m2.dimensions[0];
+    let m2_cols = m2.dimensions[1];
+    assert_eq!(
+        m1_rows, m2_rows,
+        "vertical size mismatch in horizontal composition"
+    );
+    for i in 0..m1_rows {
+        values.append(&mut m1.values[i * m1_cols..(i + 1) * m1_cols].to_vec());
+        values.append(&mut m1.values[i * m2_cols..(i + 1) * m2_cols].to_vec());
     }
-    out
+    Matrix {
+        dimensions: vec![m1.dimensions[0], m1.dimensions[1] + m2.dimensions[1]],
+        values,
+    }
 }
 
-fn compose_vertical(m1: Vec<Vec<u128>>, m2: Vec<Vec<u128>>) -> Vec<Vec<u128>> {
-    let mut col_count = 0;
-    let mut out: Vec<Vec<u128>> = Vec::new();
-    for v in m1 {
-        if col_count == 0 {
-            col_count = v.len();
-        }
-        assert_eq!(col_count, v.len(), "column count mismatch");
-        out.push(v);
+/// Join two matrices vertically
+fn compose_vertical(
+    m1: Matrix<FieldPolynomial>,
+    m2: Matrix<FieldPolynomial>,
+) -> Matrix<FieldPolynomial> {
+    let m1_rows = m1.dimensions[0];
+    let m1_cols = m1.dimensions[1];
+    let m2_rows = m2.dimensions[0];
+    let m2_cols = m2.dimensions[1];
+    assert_eq!(
+        m1_cols, m2_cols,
+        "horizontal size mismatch in vertical composition"
+    );
+    Matrix {
+        dimensions: vec![m1_rows + m2_rows, m1_cols],
+        values: m1.values.iter().chain(m2.values.iter()).cloned().collect(),
     }
-    for v in m2 {
-        assert_eq!(col_count, v.len(), "column count mismatch");
-        out.push(v);
-    }
-    out
 }
 
-// sum of absolute values of vector
-fn l1_norm(v: Vec<u128>) -> u128 {
-    let mut sum = 0_u128;
-    for i in v {
-        sum = (sum + i) % F;
-    }
-    sum
-}
-
-// square root of sum of squared vector values
-fn l2_norm(v: Vec<u128>) -> u128 {
-    let mut sum = 0_u128;
-    println!("{}", v.len());
-    for i in v {
-        sum += (i * i) % F;
-    }
-    println!("{}", sum);
-    let a = Fr::from(sum);
-    println!("{}", a);
-    if a.legendre().is_qnr() {
-        panic!("non-quadratic residue");
-    }
-    println!("aaaa");
-    let k = a.sqrt().unwrap().0 .0[0];
-    println!("{}", k);
-    u128::try_from(k).unwrap()
-    // assert_eq!(sum % 2, 0, "expected l2 sum to be even");
-    // if sum.pow(exp)
-    // sum.sqrt()
-    // a^((p-1)/2)
-}
-
-// max vector value
-fn l_max_norm(v: Vec<u128>) -> u128 {
-    let mut max = 0_u128;
-    for i in v {
-        if i > max {
-            max = i;
-        }
-    }
-    max
-}
-
-fn vec_matrix_mul(v: Vec<u128>, m: Vec<Vec<u128>>) -> Vec<u128> {
+fn vec_matrix_mul(v: Vec<FieldPolynomial>, m: Matrix<FieldPolynomial>) -> Vec<FieldPolynomial> {
     let mut out = Vec::new();
-    for r in m {
-        out.push(l1_norm(vec_mul(&v, &r)));
+    let m_cols = m.dimensions[1];
+    let m_rows = m.dimensions[0];
+    for i in 0..m_rows {
+        let row = m.values[i * m_cols..(i + 1) * m_cols].to_vec();
+        out.push(l1_norm(vec_mul(&v, &row)));
     }
     out
 }
 
-fn matrix_mul(m1: Vec<Vec<u128>>, m2: Vec<Vec<u128>>) -> Vec<Vec<u128>> {
-    assert_eq!(m1.len(), m2.len(), "matrix mul row count mismatch");
-    let mut out = Vec::new();
-    for i in 0..m1.len() {
-        out.push(vec_mul(&m1[i], &m2[i]));
-    }
-    out
-}
-
-fn vec_mul(v1: &Vec<u128>, v2: &Vec<u128>) -> Vec<u128> {
+fn vec_mul(v1: &Vec<FieldPolynomial>, v2: &Vec<FieldPolynomial>) -> Vec<FieldPolynomial> {
     assert_eq!(v1.len(), v2.len(), "vector mul length mismatch");
     let mut out = Vec::new();
     for i in 0..v1.len() {
-        out.push((v1[i] * v2[i]) % F);
+        out.push(v1[i].clone() * v2[i].clone());
     }
     out
 }
 
 // this addition happens collumn wise 🙄
-fn vec_matrix_add(v: Vec<u128>, m: Vec<Vec<u128>>) -> Vec<Vec<u128>> {
+fn vec_matrix_add(v: Vec<FieldPolynomial>, m: Matrix<FieldPolynomial>) -> Matrix<FieldPolynomial> {
     let mut out = Vec::new();
-    for x in 0..m.len() {
-        out.push(m[x].iter().map(|i| (i * v[x]) % F).collect::<Vec<u128>>());
+    let m_cols = m.dimensions[1];
+    let m_rows = m.dimensions[0];
+    for i in 0..m_rows {
+        let row = m.values[i * m_cols..(i + 1) * m_cols].to_vec();
+        out.append(
+            &mut row
+                .iter()
+                .map(|z| z.clone() * v[i].clone())
+                .collect::<Vec<FieldPolynomial>>(),
+        );
     }
-    out
+    Matrix {
+        dimensions: m.dimensions,
+        values: out,
+    }
 }
 
-fn matrix_add(m1: Vec<Vec<u128>>, m2: Vec<Vec<u128>>) -> Vec<Vec<u128>> {
-    assert_eq!(m1.len(), m2.len(), "matrix add row count mismatch");
-    let mut out = Vec::new();
-    for i in 0..m1.len() {
-        out.push(vec_add(&m1[i], &m2[i]));
-    }
-    out
-}
-
-fn vec_add(v1: &Vec<u128>, v2: &Vec<u128>) -> Vec<u128> {
+fn vec_add(v1: &Vec<FieldPolynomial>, v2: &Vec<FieldPolynomial>) -> Vec<FieldPolynomial> {
     assert_eq!(v1.len(), v2.len(), "vector add length mismatch");
     let mut out = Vec::new();
     for i in 0..v1.len() {
-        out.push((v1[i] + v2[i]) % F);
+        out.push(v1[i].clone() + v2[i].clone());
     }
     out
 }
 
-fn scalar_vec_mul(s: u128, v: &Vec<u128>) -> Vec<u128> {
+fn scalar_vec_mul(s: FieldPolynomial, v: &Vec<FieldPolynomial>) -> Vec<FieldPolynomial> {
     let mut out = Vec::new();
     for r in v {
-        out.push((r * s) % F);
+        out.push(r.clone() * s.clone());
     }
     out
 }
 
-fn scalar_matrix_mul(s: u128, m: &Vec<Vec<u128>>) -> Vec<Vec<u128>> {
-    let mut out = Vec::new();
-    for r in m {
-        out.push(r.iter().map(|v| (v * s) % F).collect::<Vec<u128>>());
+fn scalar_matrix_mul(s: FieldPolynomial, m: &Matrix<FieldPolynomial>) -> Matrix<FieldPolynomial> {
+    Matrix {
+        dimensions: m.dimensions.clone(),
+        values: m.values.iter().map(|v| v.clone() * s.clone()).collect(),
     }
-    out
 }
 
-fn print_matrix(m: &Vec<Vec<u128>>) {
-    for r in m {
+fn print_matrix(m: &Matrix<FieldPolynomial>) {
+    let m_rows = m.dimensions[0];
+    let m_cols = m.dimensions[1];
+    for i in 0..m_rows {
+        let r = m.values[i * m_cols..(i + 1) * m_cols].to_vec();
         for v in r {
-            print!("{:x}, ", v);
+            print!("{}, ", v.serialize());
         }
         println!("");
     }
