@@ -7,17 +7,18 @@ mod matrix;
 mod norms;
 mod polynomial;
 mod ring_polynomial;
+mod vector;
 
 use commitment::Vcs;
 use polynomial::Polynomial;
-
 use ring_polynomial::RingPolynomial;
+use vector::Vector;
 
 // A small base field for testing
 custom_ring!(F101, 101, "101_field");
 
 /// Customization settings
-const RING_DEGREE: usize = 16;
+const RING_DEGREE: usize = 4;
 // Change this to FoiFieldElement to use 2^64-2^32+1 base field
 type ActiveField = F101;
 
@@ -35,18 +36,17 @@ fn main() {
     );
     let vcs = Vcs::new();
     // the value being committed to
-    let x: Vec<FieldPolynomial> = vec![FieldPolynomial::zero(); vcs.l]
-        .iter()
-        .map(|_| FieldPolynomial::sample_rand(&mut rand::thread_rng()))
-        .collect::<Vec<_>>();
+    let x = Vector::<FieldPolynomial>::rand_uniform(vcs.l, &mut rand::thread_rng());
     // the short integer polynomial
     //
     // we calculate this here because of rust type restrictions in the current
     // implementation
-    let r: Vec<FieldPolynomial> = vec![FieldPolynomial::zero(); vcs.k]
-        .iter()
-        .map(|_| rand_beta())
-        .collect::<Vec<_>>();
+    let r = Vector::from_vec(
+        vec![FieldPolynomial::zero(); vcs.k]
+            .iter()
+            .map(|_| rand_beta())
+            .collect::<Vec<_>>(),
+    );
 
     // r and x are secret until opening
     // alpha is a public parameter

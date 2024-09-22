@@ -1,5 +1,7 @@
 use scalarff::FieldElement;
 
+use super::vector::Vector;
+
 /// A two dimensional matrix implementation
 #[derive(Clone, PartialEq)]
 pub struct Matrix2D<T: FieldElement> {
@@ -87,5 +89,68 @@ impl<T: FieldElement> Matrix2D<T> {
             dimensions: (self.dimensions.0, self.dimensions.1 + other.dimensions.1),
             values,
         }
+    }
+
+    pub fn rand_uniform<R: rand::Rng>(rows: usize, columns: usize, rng: &mut R) -> Self {
+        Self {
+            dimensions: (rows, columns),
+            values: Vector::rand_uniform(rows * columns, rng).to_vec(),
+        }
+    }
+}
+
+impl<T: FieldElement> std::fmt::Display for Matrix2D<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let (rows, cols) = self.dimensions;
+        writeln!(f, "[")?;
+        for i in 0..rows {
+            write!(f, "  [ ")?;
+            for j in 0..cols {
+                write!(f, "{}, ", self.values[i * cols + j])?;
+            }
+            writeln!(f, "],")?;
+            writeln!(f, "]")?;
+        }
+        Ok(())
+    }
+}
+
+impl<T: FieldElement> std::ops::Add for Matrix2D<T> {
+    type Output = Matrix2D<T>;
+
+    fn add(self, other: Matrix2D<T>) -> Matrix2D<T> {
+        assert_eq!(
+            self.dimensions, other.dimensions,
+            "matrix addition dimensions mismatch"
+        );
+        Matrix2D {
+            dimensions: self.dimensions,
+            values: self
+                .values
+                .iter()
+                .zip(other.values.iter())
+                .map(|(a, b)| a.clone() + b.clone())
+                .collect(),
+        }
+    }
+}
+
+impl<T: FieldElement> std::ops::Mul<Vector<T>> for Matrix2D<T> {
+    type Output = Vector<T>;
+
+    fn mul(self, other: Vector<T>) -> Vector<T> {
+        let mut out = Vec::new();
+        let (m_rows, m_cols) = self.dimensions;
+        for i in 0..m_rows {
+            let row = self.values[i * m_cols..(i + 1) * m_cols].to_vec();
+
+            out.push(
+                // TODO: determine if summing the vector here is correct
+                (other.clone() * Vector::from_vec(row))
+                    .iter()
+                    .fold(T::zero(), |acc, v| acc + v.clone()),
+            );
+        }
+        Vector::from_vec(out)
     }
 }
