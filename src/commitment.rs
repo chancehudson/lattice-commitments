@@ -40,7 +40,7 @@ impl<T: FieldElement + Norm> Vcs<T> {
 
         // matrix vector multiplication
         let inter1 = alpha.clone() * r.clone();
-        let inter2 = Vector::from_vec(vec![vec![T::zero(); self.n], x.to_vec()].concat());
+        let inter2 = Vector::from_vec([vec![T::zero(); self.n], x.to_vec()].concat());
         let commitment = inter2.clone() + inter1.clone();
 
         (alpha, commitment)
@@ -66,7 +66,7 @@ impl<T: FieldElement + Norm> Vcs<T> {
                 return false;
             }
         }
-        let padded_x = Vector::from_vec(vec![vec![T::zero(); self.n], x.to_vec()].concat());
+        let padded_x = Vector::from_vec([vec![T::zero(); self.n], x.to_vec()].concat());
         let c = alpha.clone() * r.clone() + padded_x.clone();
         c == *commitment
     }

@@ -125,7 +125,13 @@ impl<T: FieldElement> std::fmt::Display for Polynomial<T> {
                 self.coefficients
                     .iter()
                     .enumerate()
-                    .map(|(i, v)| format!("{}x^{i}", v.serialize()))
+                    .map(|(i, v)| {
+                        if i > 0 {
+                            format!("{}x^{i}", v.serialize())
+                        } else {
+                            format!("{}", v.serialize())
+                        }
+                    })
                     .collect::<Vec<_>>()
                     .join(",")
             )
