@@ -1,32 +1,135 @@
+use std::collections::HashMap;
 use std::marker::PhantomData;
 
+use discrete_gaussian::sample_vartime;
+use rand::Rng;
+use ring_math::Matrix2D;
+use ring_math::PolynomialRingElement;
+use ring_math::Vector;
 use scalarff::FieldElement;
 
-use super::matrix::Matrix2D;
-use super::norms::Norm;
-use super::vector::Vector;
-
 #[derive(Clone, Debug)]
-pub struct Vcs<T: FieldElement + Norm> {
+pub struct Vcs<T: PolynomialRingElement> {
     _phantom: PhantomData<T>,
     pub k: usize,     // Width (over Rq) of the commitment matrices
     pub n: usize,     // Height (over Rq) of the commitment matrix A_1
     pub l: usize,     // Dimension (over Rq) of the message space
-    pub theta: usize, // Dimension (over Rq) of the randomness space
+    pub beta: usize,  // infinite norm bound for prover randomness vector
+    pub kappa: usize, // l1 norm bound for challenge vectors
+    pub theta: f64,   // standard deviation in discrete gaussian distribution
+    pub N: usize,     // degree of the ring modulus
 }
 
-impl<T: FieldElement + Norm> Vcs<T> {
-    pub fn new() -> Self {
+fn f64_to_u64(v: f64) -> u64 {
+    let z = v.ceil() as u64;
+    z
+}
+
+impl<T: PolynomialRingElement> Vcs<T> {
+    pub fn new(polynomial_degree: usize) -> Self {
         // requirements
         // n < k
         // k > n + l
-        Vcs {
-            _phantom: PhantomData,
-            k: 8,
-            n: 2,
-            l: 2,
-            theta: 33792000,
+        let kappa: u32 = 36;
+        let beta: u32 = 1;
+        let k: u32 = 8;
+        let n: u32 = 2;
+        let l: u32 = 2;
+        if kappa > polynomial_degree as u32 {
+            panic!("kappa must be less than the polynomial degree otherwise challenge vector does not exist");
         }
+        Vcs {
+            N: polynomial_degree,
+            _phantom: PhantomData,
+            k: usize::try_from(k).unwrap(),
+            n: usize::try_from(n).unwrap(),
+            l: usize::try_from(l).unwrap(),
+            beta: usize::try_from(beta).unwrap(),
+            kappa: usize::try_from(kappa).unwrap(),
+            // theta: 33792000,
+            theta: 11.0 * f64::from(kappa * beta) * f64::sqrt(f64::from(k) * 64.0),
+        }
+    }
+
+    /// Sample a challenge vector with a specified l_1 and l_infinite norm
+    ///
+    /// l_inf should be 1 and l1 should be kappa
+    pub fn sample_challenge_vector(&self) -> T {
+        // generate random values in range 0..N
+        // if duplicate value returned discard?
+        let mut existing: HashMap<usize, bool> = HashMap::new();
+        let mut rng = rand::thread_rng();
+        while existing.len() < self.kappa {
+            let degree = rng.gen_range(0..self.N);
+            if existing.contains_key(&degree) {
+                continue;
+            }
+            existing.insert(degree, true);
+        }
+        let mut poly = T::zero().polynomial().clone();
+        for (degree, _) in existing.iter() {
+            poly.term(&T::F::one(), *degree);
+        }
+        T::from(poly)
+    }
+
+    /// Generate a proof that the user knows the opening value of a commitment.
+    ///
+    /// Similar to proving knowledge of a hash pre-image.
+    pub fn prove_opening(&self, alpha: Matrix2D<T>, r: Vector<T>) -> (Vector<T>, Vector<T>, T) {
+        // sample a y using a discrete gaussian distribution
+        let y = Vector::from_vec(
+            vec![T::zero(); self.k]
+                .iter()
+                .map(|_| {
+                    T::from(u64::from(sample_vartime(
+                        self.theta,
+                        &mut rand::thread_rng(),
+                    )))
+                })
+                .collect::<Vec<_>>(),
+        );
+        let (alpha_1, _alpha_2) = self.decompose_alpha(alpha);
+        let t = alpha_1.clone() * y.clone();
+
+        // challenge vector sampled from verifier randomness
+        let d = self.sample_challenge_vector();
+
+        let z = y + r * d.clone();
+
+        (t, z, d)
+    }
+
+    /// Verify a proof that a user knows the opening value of a commitment.
+    pub fn verify_opening_proof(
+        &self,
+        t: Vector<T>,
+        d: T,
+        z: Vector<T>,
+        cm: Vector<T>,
+        alpha: Matrix2D<T>,
+    ) -> bool {
+        // check that the l2_norm for each element in z is <= 2 * theta * sqrt(N)
+        // check that A_1 * z = t + d * c_1
+
+        for v in z.iter() {
+            if v.norm_l2() > f64_to_u64(2.0 * self.theta * 8.0) {
+                return false;
+            }
+        }
+        if d.norm_l1() != u64::try_from(self.kappa).unwrap() {
+            return false;
+        }
+        if d.norm_max() != 1 {
+            return false;
+        }
+
+        let (alpha_1, _alpha_2) = self.decompose_alpha(alpha);
+        let (cm_1, _cm_2) = self.decompose_cm(cm);
+        let lhs = alpha_1 * z;
+        let rhs = t + cm_1 * d;
+
+        lhs == rhs
     }
 
     /// Commit to a value `x` with secret `r`
@@ -36,7 +139,6 @@ impl<T: FieldElement + Norm> Vcs<T> {
         assert_eq!(self.l, x.len(), "invalid message length");
         let (alpha_1, alpha_2) = self.public_params();
         let alpha = alpha_1.compose_vertical(alpha_2.clone());
-        println!("alpha matrix: {}", alpha);
 
         // matrix vector multiplication
         let inter1 = alpha.clone() * r.clone();
@@ -62,7 +164,7 @@ impl<T: FieldElement + Norm> Vcs<T> {
         r: &Vector<T>,
     ) -> bool {
         for v in r.iter() {
-            if v.norm_l2() > u64::try_from(4 * self.theta * 8).unwrap() {
+            if v.norm_l2() > f64_to_u64(4.0 * self.theta * 8.0) {
                 return false;
             }
         }
@@ -82,5 +184,16 @@ impl<T: FieldElement + Norm> Vcs<T> {
             .compose_horizontal(Matrix2D::identity(self.l))
             .compose_horizontal(alpha_2_prime);
         (alpha_1, alpha_2)
+    }
+
+    /// Decompose an alpha matrix into A_1 and A_2
+    pub fn decompose_alpha(&self, alpha: Matrix2D<T>) -> (Matrix2D<T>, Matrix2D<T>) {
+        alpha.split_vertical(self.n, self.l)
+    }
+
+    /// Decompose a commitment to c_1 and c_2
+    pub fn decompose_cm(&self, cm: Vector<T>) -> (Vector<T>, Vector<T>) {
+        let v = cm.0.clone();
+        (Vector(v[..self.n].to_vec()), Vector(v[self.n..].to_vec()))
     }
 }

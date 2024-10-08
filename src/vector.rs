@@ -1,3 +1,4 @@
+use discrete_gaussian::sample_vartime;
 use scalarff::FieldElement;
 
 #[derive(Clone, PartialEq)]
@@ -24,6 +25,7 @@ impl<T: FieldElement> Vector<T> {
 
         // rng.gen_range(0..=l_inf)
         // Self((0..len).map(|_| T::sample_rand(rng)).collect())
+        //
         panic!();
     }
 

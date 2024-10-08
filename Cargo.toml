@@ -6,3 +6,7 @@ edition = "2021"
 [dependencies]
 rand = "0.8.5"
 scalarff = { version = "0.4.2", features = ["oxfoi", "random"] }
+
+discrete-gaussian = { git = "https://github.com/chancehudson/discrete-gaussian.git" }
+ring-math = { git = "https://github.com/chancehudson/ashlang.git", branch = "main" }
+#ring-math = { path = "../ashlang/ring-math" }
