@@ -403,8 +403,9 @@ dependencies = [
 
 [[package]]
 name = "discrete-gaussian"
-version = "0.1.0"
-source = "git+https://github.com/chancehudson/discrete-gaussian.git#aaea62c4ad7d660b4f2149a1bd542c15287771cd"
+version = "0.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4804a955b33e44055c6df3b076bca60545fc3db5710bdf28689cbb7dc3c7374d"
 dependencies = [
  "rand",
  "scalarff",
@@ -557,7 +558,7 @@ dependencies = [
 
 [[package]]
 name = "lattice-commitments"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "discrete-gaussian",
  "rand",
@@ -826,8 +827,9 @@ dependencies = [
 
 [[package]]
 name = "ring-math"
-version = "0.1.0"
-source = "git+https://github.com/chancehudson/ashlang.git?branch=main#ff1a1515068cdca3886cfa316a0e050b9768a152"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "10f9dcc8b800c8685c7c565271d99a4032abec0fcf6da2b8c73b8d75df7c8efa"
 dependencies = [
  "anyhow",
  "rand",
@@ -851,9 +853,9 @@ checksum = "f3cb5ba0dc43242ce17de99c180e96db90b235b8a9fdc9543c96d2209116bd9f"
 
 [[package]]
 name = "scalarff"
-version = "0.4.3"
+version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dfef4665624906679b3a8791efb36e3c956050297b7996762b53cf0faf1f5acc"
+checksum = "072e68a21fc6376aa00020f4c3363e5700afe30c309b51abe0e74af5392b3ce1"
 dependencies = [
  "ark-bn254",
  "ark-ff",

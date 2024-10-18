@@ -6,6 +6,7 @@ use rand::Rng;
 use ring_math::Matrix2D;
 use ring_math::PolynomialRingElement;
 use ring_math::Vector;
+use scalarff::BigUint;
 use scalarff::FieldElement;
 
 #[derive(Clone, Debug)]
@@ -113,14 +114,14 @@ impl<T: PolynomialRingElement> Vcs<T> {
         // check that A_1 * z = t + d * c_1
 
         for v in z.iter() {
-            if v.norm_l2() > f64_to_u64(2.0 * self.theta * 8.0) {
+            if v.norm_l2() > BigUint::from(f64_to_u64(2.0 * self.theta * 8.0)) {
                 return false;
             }
         }
-        if d.norm_l1() != u64::try_from(self.kappa).unwrap() {
+        if d.norm_l1() != BigUint::from(u64::try_from(self.kappa).unwrap()) {
             return false;
         }
-        if d.norm_max() != 1 {
+        if d.norm_max() != T::one().to_biguint() {
             return false;
         }
 
@@ -164,7 +165,7 @@ impl<T: PolynomialRingElement> Vcs<T> {
         r: &Vector<T>,
     ) -> bool {
         for v in r.iter() {
-            if v.norm_l2() > f64_to_u64(4.0 * self.theta * 8.0) {
+            if v.norm_l2() > BigUint::from(f64_to_u64(4.0 * self.theta * 8.0)) {
                 return false;
             }
         }
@@ -176,9 +177,9 @@ impl<T: PolynomialRingElement> Vcs<T> {
     /// Generate random public params for use in the scheme
     pub fn public_params(&self) -> (Matrix2D<T>, Matrix2D<T>) {
         let alpha_1_prime =
-            Matrix2D::rand_uniform(self.n, self.k - self.n, &mut rand::thread_rng());
+            Matrix2D::sample_uniform(self.n, self.k - self.n, &mut rand::thread_rng());
         let alpha_2_prime =
-            Matrix2D::rand_uniform(self.l, self.k - self.n - self.l, &mut rand::thread_rng());
+            Matrix2D::sample_uniform(self.l, self.k - self.n - self.l, &mut rand::thread_rng());
         let alpha_1 = Matrix2D::identity(self.n).compose_horizontal(alpha_1_prime);
         let alpha_2 = Matrix2D::zero(self.l, self.n)
             .compose_horizontal(Matrix2D::identity(self.l))

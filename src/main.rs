@@ -2,24 +2,24 @@ use ring_math::polynomial_ring;
 use ring_math::Polynomial;
 use ring_math::PolynomialRingElement;
 use ring_math::Vector;
-use scalarff::custom_ring;
+use scalarff::scalar_ring;
 use scalarff::FieldElement;
-use scalarff::FoiFieldElement;
+use scalarff::OxfoiFieldElement;
 
 mod commitment;
 
 use commitment::Vcs;
 
 // A small base field for testing
-custom_ring!(F101, 101, "101_field");
+scalar_ring!(F101, 101, "101_field");
 
 /// Customization settings
 const RING_DEGREE: usize = 64;
-// Change this to FoiFieldElement to use 2^64-2^32+1 base field
+// Change this to OxfoiFieldElement to use 2^64-2^32+1 base field
 type ActiveField = F101;
 
 // TODO: adjust the cardinality of this ring
-custom_ring!(BetaRing, 100, "beta_bound_ring");
+scalar_ring!(BetaRing, 100, "beta_bound_ring");
 
 polynomial_ring!(
     FieldPolynomial,
@@ -40,7 +40,7 @@ fn main() {
     );
     let vcs = Vcs::new(RING_DEGREE);
     // the value being committed to
-    let x = Vector::<FieldPolynomial>::rand_uniform(vcs.l, &mut rand::thread_rng());
+    let x = Vector::<FieldPolynomial>::sample_uniform(vcs.l, &mut rand::thread_rng());
     // the short integer polynomial
     //
     // we calculate this here because of rust type restrictions in the current
@@ -108,7 +108,7 @@ fn rand_beta() -> FieldPolynomial {
     let mut coefficients = vec![];
     for _ in 0..(FieldPolynomial::modulus().degree() - 1) {
         coefficients.push(ActiveField::from_biguint(
-            &BetaRing::sample_rand(&mut rand::thread_rng()).to_biguint(),
+            &BetaRing::sample_uniform(&mut rand::thread_rng()).to_biguint(),
         ));
     }
     FieldPolynomial::from(Polynomial { coefficients })

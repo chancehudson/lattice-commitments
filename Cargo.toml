@@ -1,12 +1,12 @@
 [package]
 name = "lattice-commitments"
-version = "0.1.0"
+version = "0.0.0"
 edition = "2021"
 
 [dependencies]
+discrete-gaussian = "0.0.4"
 rand = "0.8.5"
-scalarff = { version = "0.4.2", features = ["oxfoi", "random"] }
+ring-math = "0.2.0"
+scalarff = { version = "0.6.0", features = ["oxfoi", "random"] }
 
-discrete-gaussian = { git = "https://github.com/chancehudson/discrete-gaussian.git" }
-ring-math = { git = "https://github.com/chancehudson/ashlang.git", branch = "main" }
 #ring-math = { path = "../ashlang/ring-math" }
