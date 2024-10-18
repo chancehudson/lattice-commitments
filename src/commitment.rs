@@ -4,11 +4,15 @@ use std::marker::PhantomData;
 use discrete_gaussian::sample_vartime;
 use rand::Rng;
 use ring_math::Matrix2D;
+use ring_math::Polynomial;
 use ring_math::PolynomialRingElement;
 use ring_math::Vector;
+use scalarff::scalar_ring;
 use scalarff::BigUint;
 use scalarff::FieldElement;
 
+/// Instance of a vector commitment scheme. Contains functions
+/// for committing to a vector and verifying the commitment.
 #[derive(Clone, Debug)]
 pub struct Vcs<T: PolynomialRingElement> {
     _phantom: PhantomData<T>,
@@ -26,16 +30,19 @@ fn f64_to_u64(v: f64) -> u64 {
     z
 }
 
+scalar_ring!(BetaRing, 2, "beta_bound_ring");
+
 impl<T: PolynomialRingElement> Vcs<T> {
+    /// Construct a new vector commitment scheme instance.
     pub fn new(polynomial_degree: usize) -> Self {
         // requirements
         // n < k
         // k > n + l
         let kappa: u32 = 36;
         let beta: u32 = 1;
-        let k: u32 = 8;
-        let n: u32 = 2;
-        let l: u32 = 2;
+        let k: u32 = 3;
+        let n: u32 = 1;
+        let l: u32 = 1;
         if kappa > polynomial_degree as u32 {
             panic!("kappa must be less than the polynomial degree otherwise challenge vector does not exist");
         }
@@ -133,11 +140,32 @@ impl<T: PolynomialRingElement> Vcs<T> {
         lhs == rhs
     }
 
-    /// Commit to a value `x` with secret `r`
+    /// Commit to a value `x`
     ///
-    /// Returns the public parameters alpha and the commitment vector
-    pub fn commit(&self, x: &Vector<T>, r: &Vector<T>) -> (Matrix2D<T>, Vector<T>) {
+    /// Returns the public parameters alpha, the commitment vector, and the secret r
+    pub fn commit<R: rand::Rng>(
+        &self,
+        x: &Vector<T>,
+        rng: &mut R,
+    ) -> (Matrix2D<T>, Vector<T>, Vector<T>) {
         assert_eq!(self.l, x.len(), "invalid message length");
+
+        // the short integer polynomial
+        let r = Vector::from_vec(
+            vec![T::zero(); self.k]
+                .iter()
+                .map(|_| Self::sample_beta(rng))
+                .collect::<Vec<_>>(),
+        );
+
+        #[cfg(debug_assertions)]
+        {
+            // check the l_inf norm of the r
+            for v in r.iter() {
+                assert!(v.norm_max() <= BetaRing::prime());
+            }
+        }
+
         let (alpha_1, alpha_2) = self.public_params();
         let alpha = alpha_1.compose_vertical(alpha_2.clone());
 
@@ -146,7 +174,7 @@ impl<T: PolynomialRingElement> Vcs<T> {
         let inter2 = Vector::from_vec([vec![T::zero(); self.n], x.to_vec()].concat());
         let commitment = inter2.clone() + inter1.clone();
 
-        (alpha, commitment)
+        (alpha, commitment, r)
     }
 
     /// Open a previously created commitment
@@ -196,5 +224,23 @@ impl<T: PolynomialRingElement> Vcs<T> {
     pub fn decompose_cm(&self, cm: Vector<T>) -> (Vector<T>, Vector<T>) {
         let v = cm.0.clone();
         (Vector(v[..self.n].to_vec()), Vector(v[self.n..].to_vec()))
+    }
+
+    /// Sample an element in S_β
+    fn sample_beta<R: rand::Rng>(rng: &mut R) -> T {
+        // maybe put this sampling in the polynomial implementation?
+        T::from_polynomial(Polynomial {
+            coefficients: T::zero()
+                .coef()
+                .iter()
+                .map(|_| BetaRing::sample_uniform(rng).to_biguint())
+                .map(|v| T::F::from_biguint(&v))
+                .collect::<Vec<_>>(),
+        })
+    }
+
+    /// infinite norm bound for generating S_β elements
+    pub fn beta_bound() -> BigUint {
+        BetaRing::prime()
     }
 }

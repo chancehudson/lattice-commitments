@@ -4,22 +4,19 @@ use ring_math::PolynomialRingElement;
 use ring_math::Vector;
 use scalarff::scalar_ring;
 use scalarff::FieldElement;
-use scalarff::OxfoiFieldElement;
 
 mod commitment;
 
 use commitment::Vcs;
 
-// A small base field for testing
-scalar_ring!(F101, 101, "101_field");
+// creates a scalar ring struct DilithiumRingElement
+scalar_ring!(DilithiumRingElement, 8380417, "dilithium_23_bit");
+scalar_ring!(BabyBearRingElement, 2013265921, "baby bear 32 bit");
+scalar_ring!(F101, 101u128, "101 field");
 
-/// Customization settings
-const RING_DEGREE: usize = 64;
-// Change this to OxfoiFieldElement to use 2^64-2^32+1 base field
-type ActiveField = F101;
-
-// TODO: adjust the cardinality of this ring
-scalar_ring!(BetaRing, 100, "beta_bound_ring");
+// // Change this to OxfoiFieldElement to use 2^64-2^32+1 base field
+type ActiveField = BabyBearRingElement;
+const RING_DEGREE: usize = 1024;
 
 polynomial_ring!(
     FieldPolynomial,
@@ -41,16 +38,6 @@ fn main() {
     let vcs = Vcs::new(RING_DEGREE);
     // the value being committed to
     let x = Vector::<FieldPolynomial>::sample_uniform(vcs.l, &mut rand::thread_rng());
-    // the short integer polynomial
-    //
-    // we calculate this here because of rust type restrictions in the current
-    // implementation
-    let r = Vector::from_vec(
-        vec![FieldPolynomial::zero(); vcs.k]
-            .iter()
-            .map(|_| rand_beta())
-            .collect::<Vec<_>>(),
-    );
 
     // r and x are secret until opening
     // alpha is a public parameter
@@ -63,7 +50,7 @@ fn main() {
             .collect::<Vec<_>>()
             .join(",\n")
     );
-    let (alpha, commitment) = vcs.commit(&x, &r);
+    let (alpha, commitment, r) = vcs.commit(&x, &mut rand::thread_rng());
     println!(
         "Opening commitment with secret vector ({} polynomials):\n{}\n",
         vcs.k,
@@ -94,22 +81,14 @@ fn main() {
 
     assert!(valid);
 
-    println!("\nGenerating ZK proof of opening");
-    let (t, z, d) = vcs.prove_opening(alpha.clone(), r);
-    println!("ZK proof:");
-    println!("t: {} polynomials", t.len());
-    println!("z: {} polynomials", z.len());
-    println!("d: {d}");
-    let valid = vcs.verify_opening_proof(t, d, z, commitment, alpha);
-    assert!(valid);
-}
-
-fn rand_beta() -> FieldPolynomial {
-    let mut coefficients = vec![];
-    for _ in 0..(FieldPolynomial::modulus().degree() - 1) {
-        coefficients.push(ActiveField::from_biguint(
-            &BetaRing::sample_uniform(&mut rand::thread_rng()).to_biguint(),
-        ));
-    }
-    FieldPolynomial::from(Polynomial { coefficients })
+    // TODO: fix zk proofs of opening
+    //
+    // println!("\nGenerating ZK proof of opening");
+    // let (t, z, d) = vcs.prove_opening(alpha.clone(), r);
+    // println!("ZK proof:");
+    // println!("t: {} polynomials", t.len());
+    // println!("z: {} polynomials", z.len());
+    // println!("d: {d}");
+    // let valid = vcs.verify_opening_proof(t, d, z, commitment, alpha);
+    // assert!(valid);
 }

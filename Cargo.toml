@@ -8,5 +8,6 @@ discrete-gaussian = "0.0.4"
 rand = "0.8.5"
 ring-math = "0.2.0"
 scalarff = { version = "0.6.0", features = ["oxfoi", "random"] }
+#scalarff = { path = "../scalarff", features = ["oxfoi", "random"] }
 
 #ring-math = { path = "../ashlang/ring-math" }
