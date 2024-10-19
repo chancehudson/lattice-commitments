@@ -165,6 +165,7 @@ impl<T: PolynomialRingElement> Vcs<T> {
             // check the l_inf norm of the r
             for v in r.iter() {
                 assert!(v.norm_max() < BetaRing::prime());
+                assert!(v.norm_l1() != BigUint::from(0u32));
             }
         }
 
