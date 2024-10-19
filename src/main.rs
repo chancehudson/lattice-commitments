@@ -81,7 +81,7 @@ fn main() {
         let alpha_len = alpha.dimensions.0 * alpha.dimensions.1;
         println!(
             "Commitment size: {} bytes",
-            commitment.len() * RING_DEGREE * FieldPolynomial::byte_len()
+            commitment.len() * FieldPolynomial::byte_len()
         );
         println!(
             "Public parameters size: {} bytes",
