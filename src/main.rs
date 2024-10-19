@@ -30,7 +30,11 @@ polynomial_ring!(
 );
 
 fn main() {
-    println!("Base field cardinality: {}", ActiveField::prime());
+    println!(
+        "Base field cardinality: {} ({})",
+        ActiveField::prime(),
+        ActiveField::name_str()
+    );
     println!(
         "Polynomial ring: ℤ[X]/<X^{} + 1>\n",
         FieldPolynomial::modulus().degree()
