@@ -1,3 +1,4 @@
+use commitment::BetaRing;
 use ring_math::polynomial_ring;
 use ring_math::Polynomial;
 use ring_math::PolynomialRingElement;
@@ -78,19 +79,15 @@ fn main() {
     let valid = vcs.open(&commitment, &alpha, &x, &r);
     if valid {
         println!("Commitment opening is valid!\n");
-        let alpha_len = alpha.dimensions.0 * alpha.dimensions.1;
         println!(
             "Commitment size: {} bytes",
             commitment.len() * FieldPolynomial::byte_len()
         );
         println!(
             "Public parameters size: {} bytes",
-            alpha_len * RING_DEGREE * ActiveField::byte_len()
+            alpha.dimensions.0 * alpha.dimensions.1 * FieldPolynomial::byte_len()
         );
-        println!(
-            "Secret size: {} bytes",
-            r.len() * RING_DEGREE * ActiveField::byte_len()
-        );
+        println!("Secret size: {} bytes", r.len() * BetaRing::byte_len());
     } else {
         println!("Commitment opening is NOT valid!")
     }
