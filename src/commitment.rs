@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::marker::PhantomData;
 
-use discrete_gaussian::sample_vartime;
 use rand::Rng;
 use ring_math::Matrix2D;
 use ring_math::Polynomial;
@@ -85,13 +84,14 @@ impl<T: PolynomialRingElement> Vcs<T> {
     /// Generate a proof that the user knows the opening value of a commitment.
     ///
     /// Similar to proving knowledge of a hash pre-image.
+    #[cfg(feature = "zk")]
     pub fn prove_opening(&self, alpha: Matrix2D<T>, r: Vector<T>) -> (Vector<T>, Vector<T>, T) {
         // sample a y using a discrete gaussian distribution
         let y = Vector::from_vec(
             vec![T::zero(); self.k]
                 .iter()
                 .map(|_| {
-                    T::from(u64::from(sample_vartime(
+                    T::from(u64::from(discrete_gaussian::sample_vartime(
                         self.theta,
                         &mut rand::thread_rng(),
                     )))
@@ -110,6 +110,7 @@ impl<T: PolynomialRingElement> Vcs<T> {
     }
 
     /// Verify a proof that a user knows the opening value of a commitment.
+    #[cfg(feature = "zk")]
     pub fn verify_opening_proof(
         &self,
         t: Vector<T>,

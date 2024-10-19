@@ -2,13 +2,21 @@
 name = "lattice-commitments"
 version = "0.0.0"
 edition = "2021"
+authors = ["Chance Hudson <PSE>"]
+description = "Structured lattice commitments from Baum16."
+homepage = "https://github.com/chancehudson/lattice-commitments"
+repository = "https://github.com/chancehudson/lattice-commitments.git"
+license = "MIT OR Apache-2.0"
+
+[lib]
 
 [features]
 default = []
 serde = ["dep:serde", "scalarff/serde", "ring-math/serde"]
+zk = ["discrete-gaussian"]
 
 [dependencies]
-discrete-gaussian = "0.0.4"
+discrete-gaussian = { version = "0.0.4", optional = true }
 rand = "0.8.5"
 ring-math = "0.3.0"
 scalarff = { version = "0.7.0", features = ["oxfoi", "random"] }
