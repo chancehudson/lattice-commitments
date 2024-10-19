@@ -45,19 +45,31 @@ fn main() {
         "Committing to {} polynomials, each containing {} coefficients:\n{}\n",
         vcs.l,
         FieldPolynomial::modulus().degree(),
-        x.iter()
-            .map(|v| v.to_string())
-            .collect::<Vec<_>>()
-            .join(",\n")
+        {
+            let mut s = x
+                .iter()
+                .map(|v| v.to_string())
+                .collect::<Vec<_>>()
+                .join(",\n");
+            s.truncate(256);
+            s += "...";
+            s
+        }
     );
     let (alpha, commitment, r) = vcs.commit(&x, &mut rand::thread_rng());
     println!(
         "Opening commitment with secret vector ({} polynomials):\n{}\n",
         vcs.k,
-        r.iter()
-            .map(|v| v.to_string())
-            .collect::<Vec<_>>()
-            .join(",\n")
+        {
+            let mut s = r
+                .iter()
+                .map(|v| v.to_string())
+                .collect::<Vec<_>>()
+                .join(",\n");
+            s.truncate(256);
+            s += "...";
+            s
+        }
     );
     let valid = vcs.open(&commitment, &alpha, &x, &r);
     if valid {
