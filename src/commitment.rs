@@ -13,6 +13,7 @@ use scalarff::FieldElement;
 
 /// Instance of a vector commitment scheme. Contains functions
 /// for committing to a vector and verifying the commitment.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug)]
 pub struct Vcs<T: PolynomialRingElement> {
     _phantom: PhantomData<T>,

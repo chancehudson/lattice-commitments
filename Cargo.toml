@@ -3,11 +3,16 @@ name = "lattice-commitments"
 version = "0.0.0"
 edition = "2021"
 
+[features]
+default = []
+serde = ["dep:serde", "scalarff/serde", "ring-math/serde"]
+
 [dependencies]
 discrete-gaussian = "0.0.4"
 rand = "0.8.5"
-ring-math = "0.2.0"
-scalarff = { version = "0.6.0", features = ["oxfoi", "random"] }
+ring-math = "0.3.0"
+scalarff = { version = "0.7.0", features = ["oxfoi", "random"] }
+serde = { version = "1.0.210", features = ["derive"], optional = true }
 #scalarff = { path = "../scalarff", features = ["oxfoi", "random"] }
 
 #ring-math = { path = "../ashlang/ring-math" }

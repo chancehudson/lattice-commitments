@@ -10,7 +10,7 @@ mod commitment;
 use commitment::Vcs;
 
 // creates a scalar ring struct DilithiumRingElement
-scalar_ring!(DilithiumRingElement, 8380417, "dilithium_23_bit");
+scalar_ring!(DilithiumRingElement, 8380417, "dilithium 23 bit");
 scalar_ring!(BabyBearRingElement, 2013265921, "baby bear 32 bit");
 scalar_ring!(F101, 101u128, "101 field");
 
@@ -46,7 +46,7 @@ fn main() {
         vcs.l,
         FieldPolynomial::modulus().degree(),
         x.iter()
-            .map(|v| v.serialize())
+            .map(|v| v.to_string())
             .collect::<Vec<_>>()
             .join(",\n")
     );
@@ -55,7 +55,7 @@ fn main() {
         "Opening commitment with secret vector ({} polynomials):\n{}\n",
         vcs.k,
         r.iter()
-            .map(|v| v.serialize())
+            .map(|v| v.to_string())
             .collect::<Vec<_>>()
             .join(",\n")
     );

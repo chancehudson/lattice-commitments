@@ -408,7 +408,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4804a955b33e44055c6df3b076bca60545fc3db5710bdf28689cbb7dc3c7374d"
 dependencies = [
  "rand",
- "scalarff",
+ "scalarff 0.6.1",
 ]
 
 [[package]]
@@ -563,7 +563,8 @@ dependencies = [
  "discrete-gaussian",
  "rand",
  "ring-math",
- "scalarff",
+ "scalarff 0.7.0",
+ "serde",
 ]
 
 [[package]]
@@ -827,13 +828,14 @@ dependencies = [
 
 [[package]]
 name = "ring-math"
-version = "0.2.1"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "48d61cdd8db8de7cca6c2a0e3ba1f7660a28e81bfc5125749c2d1594bdee8ad2"
+checksum = "c8db998da196b41aaf0266a9cdbdc5ab981c5c0934a9e3f0b5cae31e13e23034"
 dependencies = [
  "anyhow",
  "rand",
- "scalarff",
+ "scalarff 0.7.0",
+ "serde",
 ]
 
 [[package]]
@@ -857,6 +859,17 @@ version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "072e68a21fc6376aa00020f4c3363e5700afe30c309b51abe0e74af5392b3ce1"
 dependencies = [
+ "colored",
+ "num-bigint",
+ "num-integer",
+]
+
+[[package]]
+name = "scalarff"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "64b13cae1148a3cf731ce3c8861655a155de8bbb76785307175186498d54e70f"
+dependencies = [
  "ark-bn254",
  "ark-ff",
  "ark-std",
@@ -866,6 +879,7 @@ dependencies = [
  "num-bigint",
  "num-integer",
  "rand",
+ "serde",
  "twenty-first",
 ]
 
