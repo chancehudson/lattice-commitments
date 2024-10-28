@@ -4,8 +4,8 @@ version = "0.0.1"
 edition = "2021"
 authors = ["Chance Hudson <PSE>"]
 description = "Structured lattice commitments from Baum16."
-homepage = "https://github.com/chancehudson/lattice-commitments"
-repository = "https://github.com/chancehudson/lattice-commitments.git"
+homepage = "https://github.com/ahti-cryptography/lattice-commitments"
+repository = "https://github.com/ahti-cryptography/lattice-commitments.git"
 license = "MIT OR Apache-2.0"
 
 [lib]
