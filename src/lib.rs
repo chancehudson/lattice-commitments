@@ -7,8 +7,10 @@ use ring_math::PolynomialRingElement;
 use scalarff::scalar_ring;
 use scalarff::FieldElement;
 
+mod chacha_rng;
 pub mod commitment;
 
+pub use chacha_rng::ChaChaRng;
 pub use commitment::Vcs;
 
 scalar_ring!(BabyBearRingElement, 2013265921, "baby bear 32 bit");

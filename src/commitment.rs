@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 use std::marker::PhantomData;
 
+use anyhow::anyhow;
+use anyhow::Result;
+use keccak_hash::keccak256;
 use rand::Rng;
 use ring_math::Matrix2D;
 use ring_math::Polynomial;
@@ -9,6 +12,8 @@ use ring_math::Vector;
 use scalarff::scalar_ring;
 use scalarff::BigUint;
 use scalarff::FieldElement;
+
+use crate::ChaChaRng;
 
 /// Instance of a vector commitment scheme. Contains functions
 /// for committing to a vector and verifying the commitment.
@@ -32,7 +37,7 @@ fn f64_to_u64(v: f64) -> u64 {
 
 scalar_ring!(BetaRing, 2, "beta_bound_ring");
 
-impl<T: PolynomialRingElement> Vcs<T> {
+impl<T: PolynomialRingElement + serde::Serialize> Vcs<T> {
     /// Construct a new vector commitment scheme instance.
     pub fn new(polynomial_degree: usize) -> Self {
         // requirements
@@ -55,18 +60,20 @@ impl<T: PolynomialRingElement> Vcs<T> {
             beta: usize::try_from(beta).unwrap(),
             kappa: usize::try_from(kappa).unwrap(),
             // theta: 33792000,
-            theta: 11.0 * f64::from(kappa * beta) * f64::sqrt(f64::from(k) * 64.0),
+            theta: 11.0 * f64::from(kappa * beta) * f64::sqrt(f64::from(k) * 1024.),
         }
     }
 
     /// Sample a challenge vector with a specified l_1 and l_infinite norm
     ///
     /// l_inf should be 1 and l1 should be kappa
-    pub fn sample_challenge_vector(&self) -> T {
+    pub fn sample_challenge_vector(&self, t: &Vector<T>) -> Result<T> {
         // generate random values in range 0..N
         // if duplicate value returned discard?
+        let bytes = bincode::serialize(t)?;
+        let mut rng = ChaChaRng::from_seed(&bytes);
+
         let mut existing: HashMap<usize, bool> = HashMap::new();
-        let mut rng = rand::thread_rng();
         while existing.len() < self.kappa {
             let degree = rng.gen_range(0..self.N);
             if existing.contains_key(&degree) {
@@ -78,14 +85,25 @@ impl<T: PolynomialRingElement> Vcs<T> {
         for (degree, _) in existing.iter() {
             poly.term(&T::F::one(), *degree);
         }
-        T::from(poly)
+        let out = T::from(poly);
+        if out.norm_l1() != BigUint::from(u64::try_from(self.kappa).unwrap()) {
+            anyhow::bail!("Challenge vector does not have the correct l1 norm");
+        }
+        if out.norm_max() != BigUint::from(1u64) {
+            anyhow::bail!("Challenge vector does not have the correct l max norm");
+        }
+        Ok(out)
     }
 
     /// Generate a proof that the user knows the opening value of a commitment.
     ///
     /// Similar to proving knowledge of a hash pre-image.
     #[cfg(feature = "zk")]
-    pub fn prove_opening(&self, alpha: Matrix2D<T>, r: Vector<T>) -> (Vector<T>, Vector<T>, T) {
+    pub fn prove_opening(
+        &self,
+        alpha: Matrix2D<T>,
+        r: Vector<T>,
+    ) -> Result<(Vector<T>, Vector<T>)> {
         // sample a y using a discrete gaussian distribution
         let y = Vector::from_vec(
             vec![T::zero(); self.k]
@@ -102,11 +120,17 @@ impl<T: PolynomialRingElement> Vcs<T> {
         let t = alpha_1.clone() * y.clone();
 
         // challenge vector sampled from verifier randomness
-        let d = self.sample_challenge_vector();
+        let d = self.sample_challenge_vector(&t)?;
+        println!("{d}");
+        println!("{r}");
+        println!("afhkajsf");
+        assert_eq!((r[0].clone() * d.clone()) / d.clone(), r[0].clone());
+        println!("{}", (r[0].clone() * d.clone()).norm_l2());
+        panic!("");
 
         let z = y + r * d.clone();
 
-        (t, z, d)
+        Ok((t, z))
     }
 
     /// Verify a proof that a user knows the opening value of a commitment.
@@ -114,32 +138,27 @@ impl<T: PolynomialRingElement> Vcs<T> {
     pub fn verify_opening_proof(
         &self,
         t: Vector<T>,
-        d: T,
         z: Vector<T>,
         cm: Vector<T>,
         alpha: Matrix2D<T>,
-    ) -> bool {
+    ) -> Result<bool> {
         // check that the l2_norm for each element in z is <= 2 * theta * sqrt(N)
         // check that A_1 * z = t + d * c_1
 
         for v in z.iter() {
+            println!("{}", v.norm_l2());
             if v.norm_l2() > BigUint::from(f64_to_u64(2.0 * self.theta * 8.0)) {
-                return false;
+                return Ok(false);
             }
         }
-        if d.norm_l1() != BigUint::from(u64::try_from(self.kappa).unwrap()) {
-            return false;
-        }
-        if d.norm_max() != T::one().to_biguint() {
-            return false;
-        }
+        let d = self.sample_challenge_vector(&t)?;
 
         let (alpha_1, _alpha_2) = self.decompose_alpha(alpha);
         let (cm_1, _cm_2) = self.decompose_cm(cm);
         let lhs = alpha_1 * z;
         let rhs = t + cm_1 * d;
 
-        lhs == rhs
+        Ok(lhs == rhs)
     }
 
     /// Commit to a value `x`
