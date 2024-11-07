@@ -170,12 +170,16 @@ impl<T: PolynomialRingElement> Vcs<T> {
         }
 
         let (alpha_1, alpha_2) = self.public_params();
+        use std::time::Instant;
+        let now = Instant::now();
         let alpha = alpha_1.compose_vertical(alpha_2.clone());
 
         // matrix vector multiplication
         let inter1 = alpha.clone() * r.clone();
         let inter2 = Vector::from_vec([vec![T::zero(); self.n], x.to_vec()].concat());
         let commitment = inter2.clone() + inter1.clone();
+        let elapsed = now.elapsed();
+        println!("Elapsed: {:.2?}", elapsed);
 
         (alpha, commitment, r)
     }
