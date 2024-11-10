@@ -6,8 +6,10 @@ use ring_math::Vector;
 use scalarff::scalar_ring;
 use scalarff::FieldElement;
 
+mod chacha_rng;
 mod commitment;
 
+use chacha_rng::ChaChaRng;
 use commitment::Vcs;
 
 // creates a scalar ring struct DilithiumRingElement
@@ -30,7 +32,7 @@ polynomial_ring!(
     "% x^RING_DEGREE + 1"
 );
 
-fn main() {
+fn main() -> anyhow::Result<()> {
     println!(
         "Base field cardinality: {} ({})",
         ActiveField::prime(),
@@ -96,12 +98,13 @@ fn main() {
 
     // TODO: fix zk proofs of opening
     //
-    // println!("\nGenerating ZK proof of opening");
-    // let (t, z, d) = vcs.prove_opening(alpha.clone(), r);
-    // println!("ZK proof:");
-    // println!("t: {} polynomials", t.len());
-    // println!("z: {} polynomials", z.len());
+    println!("\nGenerating ZK proof of opening");
+    let (t, z) = vcs.prove_opening(alpha.clone(), r)?;
+    println!("ZK proof:");
+    println!("t: {} polynomials", t.len());
+    println!("z: {} polynomials", z.len());
     // println!("d: {d}");
-    // let valid = vcs.verify_opening_proof(t, d, z, commitment, alpha);
-    // assert!(valid);
+    let valid = vcs.verify_opening_proof(t, z, commitment, alpha)?;
+    assert!(valid);
+    Ok(())
 }
